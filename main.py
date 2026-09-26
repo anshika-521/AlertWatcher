@@ -7,6 +7,7 @@ from watchdog.engine import Engine
 from watchdog.store import Store
 from watchdog.watchers.github_release import GithubReleaseWatcher
 from watchdog.watchers.price_tracker import PriceTrackerWatcher
+from watchdog.watchers.uptime_monitor import UptimeMonitorWatcher
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -31,6 +32,13 @@ def main() -> None:
             },
         ),
         interval_seconds=300,
+    )
+    engine.register(
+        UptimeMonitorWatcher(
+            name="uptime:github-profile",
+            config={"url": "https://github.com/anshika-521", "watch_content": True},
+        ),
+        interval_seconds=30,
     )
 
     engine.run_forever(poll_interval_seconds=10)
