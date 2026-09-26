@@ -16,6 +16,9 @@ class GithubReleaseWatcher(Watcher):
             headers={"Accept": "application/vnd.github+json"},
             timeout=10,
         )
+        if resp.status_code == 404:
+            # repo has no releases yet
+            return WatchResult(state={"latest_tag": None}, alert_message=None)
         resp.raise_for_status()
         data = resp.json()
         latest_tag = data.get("tag_name")

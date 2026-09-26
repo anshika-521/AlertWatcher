@@ -6,6 +6,7 @@ from watchdog.dispatcher import TelegramDispatcher
 from watchdog.engine import Engine
 from watchdog.store import Store
 from watchdog.watchers.github_release import GithubReleaseWatcher
+from watchdog.watchers.price_tracker import PriceTrackerWatcher
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -17,11 +18,22 @@ def main() -> None:
     engine = Engine(store=store, dispatcher=dispatcher)
 
     engine.register(
-        GithubReleaseWatcher(name="github:nodejs/node", config={"repo": "nodejs/node"}),
-        interval_seconds=60,
+        GithubReleaseWatcher(name="github:anshika-521/AlertWatcher", config={"repo": "anshika-521/AlertWatcher"}),
+        interval_seconds=120,
+    )
+    engine.register(
+        PriceTrackerWatcher(
+            name="price:atomic-habits",
+            config={
+                "url": "https://www.bookswagon.com/book/atomic-habits/9781847941831",
+                "threshold": None,
+                "drop_pct": 5,
+            },
+        ),
+        interval_seconds=300,
     )
 
-    engine.run_forever(poll_interval_seconds=15)
+    engine.run_forever(poll_interval_seconds=10)
 
 
 if __name__ == "__main__":
