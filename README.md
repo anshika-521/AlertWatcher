@@ -15,9 +15,11 @@ dedup, and alerting are all shared, unchanged.
 |---|---|---|
 | `github_release.py` | REST API (GitHub) | New release published on a tracked repo |
 | `price_tracker.py` | HTML scrape (BeautifulSoup) | Price drops below a threshold, or by a % since last check |
+| `uptime_monitor.py` | HTTP polling + content hashing | Site goes down / comes back up, or its content changes |
 
-Both were validated against real, live data — a real GitHub release firing
-a real Telegram alert, and a real scraped price drop firing another.
+All three were validated against real, live data end to end through
+Telegram — a real GitHub release, a real scraped price drop, and a real
+content change on an external site each fired a real alert.
 
 ## Architecture
 
