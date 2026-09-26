@@ -3,23 +3,30 @@ import hashlib
 from typing import Any, Optional
 
 import requests
+from bs4 import BeautifulSoup
 
 from watchdog.watcher_base import Watcher, WatchResult
 
 
 class UptimeMonitorWatcher(Watcher):
-    """config: {"url": str, "watch_content": bool, "timeout": int}
+    """config: {"url": str, "watch_content": bool, "selector": str | None, "timeout": int}
 
     Alerts on status flip (up<->down) always. If watch_content is true,
-    also alerts when the response body's hash changes while the site stays up.
+    also alerts when the hashed content changes while the site stays up.
+
+    Full-page HTML is usually too volatile to hash directly (CSRF tokens,
+    nonces, timestamps embedded by the server change on every request even
+    when nothing meaningful did). Pass `selector` (a CSS selector) to scope
+    hashing to one stable element instead of the whole page.
     """
 
     def fetch(self, last_state: Optional[dict[str, Any]]) -> WatchResult:
         url = self.config["url"]
         timeout = self.config.get("timeout", 10)
         watch_content = self.config.get("watch_content", False)
+        selector = self.config.get("selector")
 
-        is_up, status_code, content_hash = self._check(url, timeout, watch_content)
+        is_up, status_code, content_hash = self._check(url, timeout, watch_content, selector)
 
         state: dict[str, Any] = {"is_up": is_up, "status_code": status_code}
         if watch_content:
@@ -28,16 +35,25 @@ class UptimeMonitorWatcher(Watcher):
         alert_message = self._check_alert(url, state, last_state, watch_content)
         return WatchResult(state=state, alert_message=alert_message)
 
-    def _check(self, url: str, timeout: int, watch_content: bool):
+    def _check(self, url: str, timeout: int, watch_content: bool, selector: Optional[str]):
         try:
             resp = requests.get(url, timeout=timeout)
             is_up = resp.status_code < 500
             content_hash = None
             if watch_content and is_up:
-                content_hash = hashlib.sha256(resp.content).hexdigest()
+                content_hash = self._hash_content(resp.text, selector)
             return is_up, resp.status_code, content_hash
         except requests.RequestException:
             return False, None, None
+
+    def _hash_content(self, html: str, selector: Optional[str]) -> Optional[str]:
+        if selector:
+            soup = BeautifulSoup(html, "lxml")
+            el = soup.select_one(selector)
+            target = el.get_text(strip=True) if el else ""
+        else:
+            target = html
+        return hashlib.sha256(target.encode("utf-8")).hexdigest()
 
     def _check_alert(self, url, state, last_state, watch_content) -> Optional[str]:
         if last_state is None:

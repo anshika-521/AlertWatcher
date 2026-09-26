@@ -36,7 +36,7 @@ def main() -> None:
     engine.register(
         UptimeMonitorWatcher(
             name="uptime:github-profile",
-            config={"url": "https://github.com/anshika-521", "watch_content": True},
+            config={"url": "https://github.com/anshika-521", "watch_content": True, "selector": ".p-name"},
         ),
         interval_seconds=30,
     )
