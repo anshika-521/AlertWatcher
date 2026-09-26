@@ -1,36 +1,51 @@
 # Watchdog
 
-A pluggable monitoring/alerting platform. Each "watcher" polls one external
-data source on its own schedule; the core engine diffs the result against
-last-seen state, dedups repeat alerts, and dispatches notifications through
-Telegram with retry/backoff on delivery failure.
+A pluggable monitoring and alerting platform. Each **watcher** polls one
+external data source on its own schedule — a REST API, a scraped web page,
+anything with a `fetch()`. The core engine diffs the result against
+last-seen state, evaluates alert rules, dedups repeat alerts, and dispatches
+notifications to Telegram with retry/backoff on delivery failure.
+
+Adding a new data source is one `Watcher` subclass — the scheduler, storage,
+dedup, and alerting are all shared, unchanged.
+
+## Live watchers
+
+| Watcher | Source type | Triggers on |
+|---|---|---|
+| `github_release.py` | REST API (GitHub) | New release published on a tracked repo |
+| `price_tracker.py` | HTML scrape (BeautifulSoup) | Price drops below a threshold, or by a % since last check |
+
+Both were validated against real, live data — a real GitHub release firing
+a real Telegram alert, and a real scraped price drop firing another.
 
 ## Architecture
 
-- `watchdog/watcher_base.py` — plugin interface every watcher implements (`fetch(last_state) -> WatchResult`)
-- `watchdog/engine.py` — scheduler, state diffing, dedup, retry/backoff dispatch
-- `watchdog/store.py` — SQLite-backed state store + alert history
-- `watchdog/dispatcher.py` — Telegram Bot API integration
-- `watchdog/watchers/` — one module per data source
+```
+watchdog/
+├── watcher_base.py   # plugin interface: fetch(last_state) -> WatchResult
+├── engine.py         # scheduler, diffing, dedup, retry/backoff dispatch
+├── store.py          # SQLite: last-seen state per watcher + alert history
+├── dispatcher.py      # Telegram Bot API integration
+└── watchers/          # one module per data source
+```
 
-Adding a new data source means writing one `Watcher` subclass — the engine,
-scheduler, storage, and alerting are all shared.
-
-## Watchers
-
-- `github_release.py` — alerts on a new GitHub release for a tracked repo
+`api.py` serves a minimal read-only dashboard (watcher status + alert
+history) via FastAPI — no build step, no frontend framework.
 
 ## Setup
 
 ```bash
 pip install -r requirements.txt
 cp .env.example .env   # fill in TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID
-python main.py
+
+python main.py                                    # starts the alert engine
+uvicorn api:app --reload --port 8000              # starts the dashboard (optional, separate process)
 ```
 
-Get a bot token from [@BotFather](https://t.me/BotFather) on Telegram, then
-message your bot once and call
-`https://api.telegram.org/bot<TOKEN>/getUpdates` to find your chat ID.
+Get a bot token from [@BotFather](https://t.me/BotFather) on Telegram, message
+your bot once, then call `https://api.telegram.org/bot<TOKEN>/getUpdates` to
+find your chat ID.
 
 ## Tests
 
